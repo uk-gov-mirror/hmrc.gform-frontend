@@ -19,11 +19,11 @@ package uk.gov.hmrc.gform.playcomponents
 import akka.stream.Materializer
 import play.api.mvc.{ EssentialFilter, SessionCookieBaker }
 import play.filters.csrf.CSRFComponents
-import play.filters.headers.SecurityHeadersFilter
 import uk.gov.hmrc.gform.akka.AkkaModule
 import uk.gov.hmrc.gform.auditing.AuditingModule
 import uk.gov.hmrc.gform.config.ConfigModule
 import uk.gov.hmrc.gform.controllers.ControllersModule
+import uk.gov.hmrc.gform.gformbackend.GformBackendModule
 import uk.gov.hmrc.gform.metrics.MetricsModule
 import uk.gov.hmrc.crypto.ApplicationCrypto
 import uk.gov.hmrc.play.bootstrap.config.DefaultHttpAuditEvent
@@ -32,12 +32,27 @@ import uk.gov.hmrc.play.bootstrap.frontend.filters.crypto.SessionCookieCrypto
 import uk.gov.hmrc.play.bootstrap.frontend.filters.crypto.SessionCookieCryptoFilter
 import uk.gov.hmrc.play.bootstrap.frontend.filters.crypto.SessionCookieCryptoProvider
 import uk.gov.hmrc.play.bootstrap.frontend.filters.deviceid.DefaultDeviceIdFilter
-import uk.gov.hmrc.play.bootstrap.frontend.filters.{ AllowlistFilter, DefaultFrontendAuditFilter, FrontendFilters, HeadersFilter, SessionIdFilter, SessionTimeoutFilter, SessionTimeoutFilterConfig }
+import uk.gov.hmrc.play.bootstrap.frontend.filters.{ DefaultFrontendAuditFilter, HeadersFilter, SessionTimeoutFilter, SessionTimeoutFilterConfig }
 import uk.gov.hmrc.play.bootstrap.filters.{ CacheControlConfig, CacheControlFilter, DefaultLoggingFilter, MDCFilter }
 
 import scala.concurrent.ExecutionContext
 
+import uk.gov.hmrc.crypto._
+
+class GformSessionCookieCryptoFilter(
+  sessionCookieCrypto: SessionCookieCrypto,
+  val sessionBaker: SessionCookieBaker
+)(
+  implicit
+  override val mat: Materializer,
+  override val ec: ExecutionContext)
+    extends SessionCookieCryptoFilter {
+  override protected lazy val encrypter: Encrypter = sessionCookieCrypto.crypto
+  override protected lazy val decrypter: Decrypter = sessionCookieCrypto.crypto
+}
+
 class FrontendFiltersModule(
+  gformBackendModule: GformBackendModule,
   applicationCrypto: ApplicationCrypto,
   playBuiltInsModule: PlayBuiltInsModule,
   akkaModule: AkkaModule,
@@ -46,6 +61,7 @@ class FrontendFiltersModule(
   metricsModule: MetricsModule,
   controllersModule: ControllersModule,
   csrfComponents: CSRFComponents,
+  gformSessionCookieBaker: SessionCookieBaker,
   sessionCookieBaker: SessionCookieBaker
 )(implicit ec: ExecutionContext) { self =>
   private implicit val materializer: Materializer = akkaModule.materializer
@@ -65,6 +81,13 @@ class FrontendFiltersModule(
     new DefaultSessionCookieCryptoFilter(sessionCookieCrypto, sessionCookieBaker)
   }
 
+  private val gformCookieCryptoFilter: SessionCookieCryptoFilter = {
+    val applicationCrypto: ApplicationCrypto = new ApplicationCrypto(configModule.typesafeConfig)
+    val sessionCookieCrypto: SessionCookieCrypto = new SessionCookieCryptoProvider(applicationCrypto).get()
+
+    new GformSessionCookieCryptoFilter(sessionCookieCrypto, gformSessionCookieBaker)
+  }
+
   private val cacheControlFilter: CacheControlFilter = {
     val cacheControlConfig: CacheControlConfig = CacheControlConfig.fromConfig(configModule.playConfiguration)
     new CacheControlFilter(cacheControlConfig, materializer)
@@ -81,30 +104,46 @@ class FrontendFiltersModule(
     configModule.playConfiguration,
     auditingModule.auditConnector)
 
-  private val securityHeadersFilter = SecurityHeadersFilter(configModule.playConfiguration)
+  //private val securityHeadersFilter = SecurityHeadersFilter(configModule.playConfiguration)
 
   private val headersFilter = new HeadersFilter(materializer)
 
   private val loggingFilter = new DefaultLoggingFilter(configModule.controllerConfigs)
 
-  private val allowListFilter = new AllowlistFilter(configModule.playConfiguration, materializer)
+  //private val allowListFilter = new AllowlistFilter(configModule.playConfiguration, materializer)
 
-  private val sessionIdFilter = new SessionIdFilter(materializer, ec, sessionCookieBaker)
+  //private val sessionIdFilter = new SessionIdFilter(materializer, ec, sessionCookieBaker)
 
-  lazy val httpFilters: Seq[EssentialFilter] = new FrontendFilters(
-    configModule.playConfiguration,
-    loggingFilter,
-    headersFilter,
-    securityHeadersFilter,
-    frontendAuditFilter,
+  private val myFilter =
+    new uk.gov.hmrc.gform.MyFilter(cookieCryptoFilter, gformCookieCryptoFilter, gformBackendModule.gformConnector)
+
+  lazy val httpFilters: Seq[EssentialFilter] = Seq(
     metricsModule.metricsFilter,
+    myFilter,
+    headersFilter,
     deviceIdFilter,
-    csrfComponents.csrfFilter,
-    cookieCryptoFilter,
+    loggingFilter,
+    frontendAuditFilter,
     sessionTimeoutFilter,
+    csrfComponents.csrfFilter,
     cacheControlFilter,
-    mdcFilter,
-    allowListFilter,
-    sessionIdFilter
-  ).filters
+    mdcFilter
+  )
+
+  /* lazy val httpFilters: Seq[EssentialFilter] = new FrontendFilters(
+ *   configModule.playConfiguration,
+ *   loggingFilter,
+ *   headersFilter,
+ *   securityHeadersFilter,
+ *   frontendAuditFilter,
+ *   metricsModule.metricsFilter,
+ *   deviceIdFilter,
+ *   csrfComponents.csrfFilter,
+ *   cookieCryptoFilter,
+ *   sessionTimeoutFilter,
+ *   cacheControlFilter,
+ *   mdcFilter,
+ *   allowListFilter,
+ *   sessionIdFilter
+ * ).filters */
 }

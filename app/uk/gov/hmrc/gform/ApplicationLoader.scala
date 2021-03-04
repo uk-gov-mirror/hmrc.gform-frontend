@@ -118,6 +118,14 @@ class ApplicationModule(context: Context)
     new LegacySessionCookieBaker(config, cookieSigner)
   }
 
+  private val gformSessionCookieBaker: SessionCookieBaker = {
+    val httpConfiguration: HttpConfiguration =
+      new HttpConfiguration.HttpConfigurationProvider(configModule.playConfiguration, configModule.environment).get
+
+    val config: SessionConfiguration = httpConfiguration.session.copy(cookieName = "gformsession")
+    new LegacySessionCookieBaker(config, cookieSigner)
+  }
+
   private val graphModule = new GraphModule(
     authModule,
     gformBackendModule
@@ -181,6 +189,7 @@ class ApplicationModule(context: Context)
   applicationCrypto.verifyConfiguration()
 
   private val frontendFiltersModule = new FrontendFiltersModule(
+    gformBackendModule,
     applicationCrypto,
     playBuiltInsModule,
     akkaModule,
@@ -189,6 +198,7 @@ class ApplicationModule(context: Context)
     metricsModule,
     controllersModule,
     this,
+    gformSessionCookieBaker,
     sessionCookieBaker
   )
 
