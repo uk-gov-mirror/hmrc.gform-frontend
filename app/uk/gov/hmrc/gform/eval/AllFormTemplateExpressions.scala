@@ -84,6 +84,7 @@ object AllFormTemplateExpressions extends ExprExtractorHelpers {
         case d: Destination.DataStore              => Nil
         case d: Destination.InfoArchive            => List(d.utr, d.nino, d.postalCode, Some(d.paymentReference)).flatten
         case d: Destination.PegaApi                => d.caseId :: Nil
+        case d: Destination.PegaCreateCase         => List(d.targetApplication, d.caseTypeId)
         case d: Destination.NiRefundClaimApi =>
           List(
             Some(d.bankAccountName),

@@ -175,8 +175,31 @@ trait DestinationGen {
       personalisation
     )
 
+  def pegaCreateCaseGen: Gen[Destination.PegaCreateCase] =
+    for {
+      id                <- destinationIdGen
+      includeIf         <- includeIfGen()
+      failOnError       <- PrimitiveGen.booleanGen
+      targetApplication <- ExprGen.exprGen()
+      caseTypeId        <- ExprGen.exprGen()
+    } yield Destination.PegaCreateCase(
+      id,
+      includeIf,
+      failOnError,
+      targetApplication,
+      caseTypeId
+    )
+
   def destinationGen: Gen[Destination] =
-    Gen.oneOf(hmrcDmsGen, handlebarsHttpApiGen, stateTransitionGen, logGen, emailGen, submissionConsolidatorGen)
+    Gen.oneOf(
+      hmrcDmsGen,
+      handlebarsHttpApiGen,
+      stateTransitionGen,
+      logGen,
+      emailGen,
+      submissionConsolidatorGen,
+      pegaCreateCaseGen
+    )
 
   def destinationWithFixedIdGen(id: DestinationId): Gen[Destination] = hmrcDmsGen.map(_.copy(id = id))
 

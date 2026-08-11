@@ -20,9 +20,9 @@ import play.api.i18n.Messages
 import uk.gov.hmrc.gform.models.optics.FormModelVisibilityOptics
 import uk.gov.hmrc.gform.sharedmodel.formtemplate.{ Expr, FormTemplate }
 import uk.gov.hmrc.gform.sharedmodel.formtemplate.destinations.DestinationIncludeIf.IncludeIfValue
-import uk.gov.hmrc.gform.sharedmodel.formtemplate.destinations.{ DestinationIncludeIf, DestinationWithCustomerCaseflow, DestinationWithCustomerId, DestinationWithNiRefundClaimBankDetails, DestinationWithNrsOrchestrator, DestinationWithPaymentReference, DestinationWithPegaCaseId, DestinationWithTaxpayerId }
+import uk.gov.hmrc.gform.sharedmodel.formtemplate.destinations.{ DestinationIncludeIf, DestinationWithCustomerCaseflow, DestinationWithCustomerId, DestinationWithNiRefundClaimBankDetails, DestinationWithNrsOrchestrator, DestinationWithPaymentReference, DestinationWithPegaCaseId, DestinationWithPegaCreateCase, DestinationWithTaxpayerId }
 import uk.gov.hmrc.gform.sharedmodel.formtemplate.destinations.Destinations.DestinationList
-import uk.gov.hmrc.gform.sharedmodel.{ DestinationEvaluation, DestinationResult, NRSOrchestratorDestinationResult, NRSOrchestratorDestinationResultData }
+import uk.gov.hmrc.gform.sharedmodel.{ DestinationEvaluation, DestinationResult, NRSOrchestratorDestinationResult, NRSOrchestratorDestinationResultData, PegaCreateCaseDestinationResult, PegaCreateCaseDestinationResultData }
 
 object DestinationEvaluator {
 
@@ -155,6 +155,18 @@ object DestinationEvaluator {
               None,
               None
             )
+          case d: DestinationWithPegaCreateCase =>
+            val includeIfEval = evalIncludeIf(d.includeIf)
+            val targetApplication =
+              formModelVisibilityOptics.evalAndApplyTypeInfoFirst(d.targetApplication).stringRepresentation
+            val caseTypeId =
+              formModelVisibilityOptics.evalAndApplyTypeInfoFirst(d.caseTypeId).stringRepresentation
+
+            PegaCreateCaseDestinationResult(
+              d.id,
+              includeIfEval,
+              PegaCreateCaseDestinationResultData(targetApplication, caseTypeId)
+            ).toDestinationResult
           case d: DestinationWithNiRefundClaimBankDetails =>
             val includeIfEval = evalIncludeIf(d.includeIf)
             val bankAccountName =

@@ -53,6 +53,11 @@ sealed trait DestinationWithPegaCaseId extends Destination {
   def caseId: Expr
 }
 
+sealed trait DestinationWithPegaCreateCase extends Destination {
+  def targetApplication: Expr
+  def caseTypeId: Expr
+}
+
 sealed trait DestinationWithNiRefundClaimBankDetails extends Destination {
   def bankAccountName: Expr
   def sortCode: Expr
@@ -206,6 +211,14 @@ object Destination {
     nino: Expr
   ) extends Destination with DestinationWithNiRefundClaimBankDetails
 
+  case class PegaCreateCase(
+    id: DestinationId,
+    includeIf: DestinationIncludeIf,
+    failOnError: Boolean,
+    targetApplication: Expr,
+    caseTypeId: Expr
+  ) extends Destination with DestinationWithPegaCreateCase
+
   case class NRSOrchestrator(
     id: DestinationId,
     includeIf: DestinationIncludeIf,
@@ -226,6 +239,7 @@ object Destination {
   val log: String = "log"
   val email: String = "email"
   val pegaApi: String = "pegaApi"
+  val pegaCreateCase: String = "pegaCreateCase"
   val niRefundClaimApi: String = "niRefundClaimApi"
   val nrsOrchestrator: String = "nrsOrchestrator"
 
@@ -246,6 +260,7 @@ object Destination {
         log                    -> UploadableLogDestination.reads,
         email                  -> UploadableEmailDestination.reads,
         pegaApi                -> UploadablePegaApiDestination.reads,
+        pegaCreateCase         -> UploadablePegaCreateCaseDestination.reads,
         niRefundClaimApi       -> UploadableNiRefundClaimApiDestination.reads,
         nrsOrchestrator        -> UploadableNrsOrchestratorDestination.reads
       )
@@ -566,6 +581,34 @@ object UploadablePegaApiDestination {
     private val d: Reads[UploadablePegaApiDestination] = derived.reads[UploadablePegaApiDestination]()
     override def reads(json: JsValue): JsResult[Destination.PegaApi] =
       d.reads(json).flatMap(_.toPegaApiDestination.fold(JsError(_), JsSuccess(_)))
+  }
+}
+
+case class UploadablePegaCreateCaseDestination(
+  id: DestinationId,
+  includeIf: DestinationIncludeIf,
+  failOnError: Boolean,
+  targetApplication: TextExpression,
+  caseTypeId: TextExpression
+) {
+  private def toPegaCreateCaseDestination: Either[String, Destination.PegaCreateCase] =
+    for {
+      cvii <- addErrorInfo(id, None, includeIf)
+    } yield Destination.PegaCreateCase(
+      id,
+      cvii,
+      failOnError,
+      targetApplication.expr,
+      caseTypeId.expr
+    )
+}
+
+object UploadablePegaCreateCaseDestination {
+  implicit val reads: Reads[Destination.PegaCreateCase] = new Reads[Destination.PegaCreateCase] {
+    private val d: Reads[UploadablePegaCreateCaseDestination] =
+      derived.reads[UploadablePegaCreateCaseDestination]()
+    override def reads(json: JsValue): JsResult[Destination.PegaCreateCase] =
+      d.reads(json).flatMap(_.toPegaCreateCaseDestination.fold(JsError(_), JsSuccess(_)))
   }
 }
 
