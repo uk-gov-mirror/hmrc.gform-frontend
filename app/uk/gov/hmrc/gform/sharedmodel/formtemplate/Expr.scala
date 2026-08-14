@@ -248,23 +248,22 @@ sealed trait StringFnc {
   }
 
   private def toUTR(value: String): String = {
-    var updatedValue = value.replaceAll(" ", "")
-    updatedValue = addSpace(5, updatedValue)
-    addSpace(11, updatedValue)
+    val valueWithoutSpace = value.replaceAll(" ", "")
+    val valueWithSpaceAt5 = addSpace(5, valueWithoutSpace)
+    addSpace(11, valueWithSpaceAt5)
   }
 
   private def toVRN(value: String): String = {
-    var updatedValue = value.replaceAll(" ", "")
-    updatedValue = addSpace(3, updatedValue)
-    updatedValue = addSpace(8, updatedValue)
-    addSpace(11, updatedValue)
+    val valueWithoutSpace = value.replaceAll(" ", "")
+    val valueWithSpaceAt3 = addSpace(3, valueWithoutSpace)
+    val valueWithSpaceAt7 = addSpace(8, valueWithSpaceAt3)
+    addSpace(11, valueWithSpaceAt7)
   }
 
-  private def addSpace(index: Int, toString: String): String =
-    if (index >= 0 && index < toString.length) {
-      toString.patch(index, " ", 0)
-    } else {
-      toString
+  private def addSpace(index: Int, value: String): String =
+    index match {
+      case x if x >= 0 && x < value.length => value.patch(index, " ", 0)
+      case _                               => value
     }
 }
 
