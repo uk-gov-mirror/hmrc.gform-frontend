@@ -239,11 +239,33 @@ sealed trait StringFnc {
     case StringFnc.CapitalizeAll  => s.split(' ').map(_.capitalize).mkString(" ")
     case StringFnc.LowerCase      => s.toLowerCase
     case StringFnc.UpperCase      => s.toUpperCase
+    case StringFnc.ShowAsVrn      => toVRN(s)
+    case StringFnc.ShowAsUtr      => toUTR(s)
     case StringFnc.RemoveSpaces   => s.replaceAll(" ", "")
     case StringFnc.LowerCaseFirst => s.headOption.map(c => s"${c.toLower}${s.tail}").getOrElse("")
     case StringFnc.SubString(beginIndex, endIndex) =>
       s.substring(Math.min(beginIndex, s.length), Math.min(endIndex, s.length))
   }
+
+  private def toUTR(value: String): String = {
+    var updatedValue = value.replaceAll(" ", "")
+    updatedValue = addSpace(5, updatedValue)
+    addSpace(11, updatedValue)
+  }
+
+  private def toVRN(value: String): String = {
+    var updatedValue = value.replaceAll(" ", "")
+    updatedValue = addSpace(3, updatedValue)
+    updatedValue = addSpace(8, updatedValue)
+    addSpace(11, updatedValue)
+  }
+
+  private def addSpace(index: Int, toString: String): String =
+    if (index >= 0 && index < toString.length) {
+      toString.patch(index, " ", 0)
+    } else {
+      toString
+    }
 }
 
 object StringFnc {
@@ -251,6 +273,8 @@ object StringFnc {
   case object CapitalizeAll extends StringFnc
   case object UpperCase extends StringFnc
   case object LowerCase extends StringFnc
+  case object ShowAsVrn extends StringFnc
+  case object ShowAsUtr extends StringFnc
   case object RemoveSpaces extends StringFnc
   case object LowerCaseFirst extends StringFnc
   case class SubString(beginIndex: Int, endIndex: Int) extends StringFnc
