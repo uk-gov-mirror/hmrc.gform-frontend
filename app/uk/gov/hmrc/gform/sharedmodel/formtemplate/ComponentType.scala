@@ -573,7 +573,8 @@ case class InformationMessage(infoType: InfoType, infoText: SmartString, summary
 
 case class FileUpload(
   fileSizeLimit: Option[Int],
-  allowedFileTypes: Option[AllowedFileTypes]
+  allowedFileTypes: Option[AllowedFileTypes],
+  dataUpload: Boolean
 ) extends ComponentType
 
 case class MultiFileUpload(

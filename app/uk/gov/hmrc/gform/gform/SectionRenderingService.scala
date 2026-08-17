@@ -1686,7 +1686,7 @@ class SectionRenderingService(
               upscanData,
               ei.formModelOptics
             )
-          case FileUpload(_, allowedFileTypes) =>
+          case FileUpload(_, allowedFileTypes, _) =>
             val allowedContentTypes = allowedFileTypes
               .map(_.contentTypes)
               .getOrElse(ei.formTemplate.allowedFileTypes.contentTypes)

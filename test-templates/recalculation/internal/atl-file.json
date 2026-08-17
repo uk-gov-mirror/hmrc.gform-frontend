@@ -134,7 +134,9 @@
                     "submissible": true,
                     "isPageHeading": true,
                     "type": {
-                      "FileUpload": {}
+                      "FileUpload": {
+                        "dataUpload": false
+                      }
                     },
                     "onlyShowOnSummary": false,
                     "editable": true

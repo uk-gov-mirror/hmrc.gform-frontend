@@ -43,6 +43,7 @@ import uk.gov.hmrc.gform.sharedmodel.form._
 import uk.gov.hmrc.gform.sharedmodel.formtemplate._
 import uk.gov.hmrc.gform.sharedmodel.formtemplate.destinations.DestinationId
 import uk.gov.hmrc.gform.sharedmodel.retrieval.{ AuthRetrievals, AuthRetrievalsByFormIdData }
+import uk.gov.hmrc.gform.spreadsheet.SpreadsheetData
 import uk.gov.hmrc.gform.submission.Submission
 import uk.gov.hmrc.gform.testonly.snapshot._
 import uk.gov.hmrc.gform.testonly.translation.TranslationAuditOverview
@@ -472,6 +473,14 @@ class GformConnector(httpClient: HttpClientV2, baseUrl: String) {
   def deleteFile(formId: FormId, fileId: FileId)(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[Unit] =
     httpClient.delete(url"$baseUrl/forms/${formId.value}/deleteFile/${fileId.value}").execute[HttpResponse].void
 
+  def downloadFile(envelopeId: EnvelopeId, fileName: String)(implicit
+    hc: HeaderCarrier,
+    ec: ExecutionContext
+  ): Future[SpreadsheetData] = {
+    val url = url"$baseUrl/object-store/data-file/${envelopeId.value}/$fileName"
+    httpClient.get(url).execute[SpreadsheetData]
+  }
+
   private val organisationB =
     new DataRetrieveConnectorBlueprint(httpClient, baseUrl, "organisation")
 
@@ -898,6 +907,18 @@ class GformConnector(httpClient: HttpClientV2, baseUrl: String) {
         }
     }
 
+  }
+  def generatePowerUserSpreadsheet(
+    formTemplateId: FormTemplateId,
+    formComponentIds: List[FormComponentId]
+  )(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[HttpResponse] = {
+    val url = s"$baseUrl/test-only/generate-power-user-spreadsheet/${formTemplateId.value}"
+    val payload = Json.toJson(formComponentIds)
+
+    httpClient
+      .post(url"$url")
+      .withBody(payload)
+      .stream[HttpResponse]
   }
 
   def changeOverrides(formTemplateId: FormTemplateId, overrides: Overrides)(implicit

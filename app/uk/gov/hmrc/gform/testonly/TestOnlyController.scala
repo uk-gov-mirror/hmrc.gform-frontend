@@ -22,6 +22,7 @@ import cats.implicits._
 import com.typesafe.config.{ ConfigFactory, ConfigRenderOptions }
 import org.apache.pekko.stream.scaladsl.Source
 import org.apache.pekko.util.ByteString
+import play.api.http.HttpEntity.Streamed
 import play.api.i18n.{ I18nSupport, Messages }
 import play.api.libs.json.{ JsObject, JsValue, Json }
 import play.api.mvc._
@@ -267,6 +268,11 @@ class TestOnlyController(
       uk.gov.hmrc.gform.testonly.routes.TestOnlyController.toggleFormBuilder(formTemplateId, accessCode)
     )
 
+    val powerUserSpreadsheetLink = uk.gov.hmrc.gform.views.html.hardcoded.pages.link(
+      "Power user spreadsheet",
+      uk.gov.hmrc.gform.testonly.routes.TestOnlyController.powerUserSpreadsheet(formTemplateId, accessCode)
+    )
+
     val testSetupData = uk.gov.hmrc.gform.views.html.hardcoded.pages.link(
       "MongoUserData, VisitIndex, AnswerMap",
       uk.gov.hmrc.gform.testonly.routes.TestOnlyController.testSetupData(formTemplateId, accessCode)
@@ -281,6 +287,7 @@ class TestOnlyController(
         restoreFormLink,
         toggleSpecimen,
         toggleFormBuilder,
+        powerUserSpreadsheetLink,
         testSetupData
       )
 
@@ -1598,6 +1605,34 @@ class TestOnlyController(
                                      |Body: ${httpResponse.body}""".stripMargin)
           }
       }
+    }
+
+  // This is copy & paste from ProxyActions.scala
+  private val contentTypeHeaderKey = "Content-Type"
+  private val contentLengthHeaderKey = "Content-Length"
+  private val filterOutContentHeaders: ((String, String)) => Boolean = { case (key, _) =>
+    !key.equalsIgnoreCase(contentTypeHeaderKey) && !key.equalsIgnoreCase(contentLengthHeaderKey)
+  }
+  def powerUserSpreadsheet(formTemplateId: FormTemplateId, maybeAccessCode: Option[AccessCode]) =
+    auth.async[SectionSelectorType.WithAcknowledgement](formTemplateId, maybeAccessCode) {
+      implicit request => lang => cache => _ => formModelOptics =>
+        val formComponentIds: List[FormComponentId] = formModelOptics.formModelRenderPageOptics.allFormComponentIds
+
+        gformConnector.generatePowerUserSpreadsheet(formTemplateId, formComponentIds).map { streamedResponse =>
+          val headersMap = streamedResponse.headers
+          val contentLength = headersMap.get(contentLengthHeaderKey).flatMap(_.headOption.map(_.toLong))
+          Result(
+            ResponseHeader(
+              streamedResponse.status,
+              streamedResponse.headers.view.mapValues(_.head).filter(filterOutContentHeaders).toMap
+            ),
+            Streamed(
+              streamedResponse.bodyAsSource,
+              contentLength,
+              Some("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            )
+          )
+        }
     }
 
   def testSetupData(formTemplateId: FormTemplateId, maybeAccessCode: Option[AccessCode]) =

@@ -415,6 +415,7 @@ class GformModule(
       controllersModule.authenticatedRequestActions,
       fastForwardService,
       gformBackEndService,
+      gformBackendModule.gformConnector,
       upscanModule.upscanService,
       playBuiltInsModule.i18nSupport,
       controllersModule.messagesControllerComponents,

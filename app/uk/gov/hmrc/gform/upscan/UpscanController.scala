@@ -27,11 +27,12 @@ import uk.gov.hmrc.gform.controllers.{ AuthCacheWithForm, AuthenticatedRequestAc
 import uk.gov.hmrc.gform.core.Retrying
 import uk.gov.hmrc.gform.eval.smartstring.SmartStringEvaluationSyntax
 import uk.gov.hmrc.gform.gform.FastForwardService
-import uk.gov.hmrc.gform.gformbackend.GformBackEndAlgebra
+import uk.gov.hmrc.gform.gformbackend.{ GformBackEndAlgebra, GformConnector }
 import uk.gov.hmrc.gform.models.SectionSelectorType
-import uk.gov.hmrc.gform.sharedmodel.form.{ FileId, FormIdData }
-import uk.gov.hmrc.gform.sharedmodel.formtemplate._
+import uk.gov.hmrc.gform.sharedmodel.form.{ FileId, Form, FormIdData }
+import uk.gov.hmrc.gform.sharedmodel.formtemplate.{ IsFileUpload, _ }
 import uk.gov.hmrc.gform.sharedmodel.{ AccessCode, SmartString }
+import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.bootstrap.frontend.controller.FrontendController
 
 import scala.concurrent.duration._
@@ -41,6 +42,7 @@ class UpscanController(
   auth: AuthenticatedRequestActions,
   fastForwardService: FastForwardService,
   gformBackEndAlgebra: GformBackEndAlgebra[Future],
+  gformConnector: GformConnector,
   upscanService: UpscanAlgebra[Future],
   i18nSupport: I18nSupport,
   messagesControllerComponents: MessagesControllerComponents,
@@ -51,6 +53,32 @@ class UpscanController(
   import i18nSupport._
 
   private val logger: Logger = LoggerFactory.getLogger(getClass)
+
+  private def processSpreadSheet(
+    maybeFormComponent: Option[FormComponent],
+    form: Form,
+    confirmation: UpscanConfirmation
+  )(implicit hc: HeaderCarrier): Future[Form] = {
+
+    val isDataUpload = maybeFormComponent match {
+      case Some(IsFileUpload(FileUpload(_, _, dataUpload))) => dataUpload
+      case _                                                => false
+    }
+
+    if (isDataUpload) {
+      val maybeFileName = for {
+        formComponent <- maybeFormComponent
+        fileName      <- confirmation.filename
+      } yield formComponent.id.value + "_" + fileName
+      for {
+        spreadSheetData <- gformConnector.downloadFile(form.envelopeId, maybeFileName.getOrElse("-"))
+      } yield form.copy(
+        formData = form.formData ++ spreadSheetData.toFormData()
+      )
+    } else {
+      Future.successful(form)
+    }
+  }
 
   def success(
     formTemplateId: FormTemplateId,
@@ -72,12 +100,16 @@ class UpscanController(
             retry(upscanService.retrieveConfirmationOrFail(reference), 2.seconds, 30).flatMap { confirmation =>
               confirmation.status match {
                 case UpscanFileStatus.Ready =>
+                  val maybeFormComponent = formModelOptics.formModelVisibilityOptics.fcLookup.get(formComponentId)
+
                   gformBackEndAlgebra.getForm(formIdData).flatMap { form =>
                     for {
+                      formUpd <- processSpreadSheet(maybeFormComponent, form, confirmation)
+
                       res <- fastForwardService
                                .redirectStopAt[SectionSelectorType.Normal](
                                  sectionNumber,
-                                 cache.copy(form = form),
+                                 cache.copy(form = formUpd),
                                  maybeAccessCode,
                                  formModelOptics,
                                  SuppressErrors.No

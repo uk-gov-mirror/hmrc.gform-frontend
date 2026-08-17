@@ -69,7 +69,7 @@ class GroupUtilsSpec extends AnyFlatSpecLike with Matchers with FormModelSupport
     val sections: List[Section] =
       mkSection(
         mkFormComponent("regular", Text(ShortText.default, Value)) ::
-          mkFormComponent("regularFile", FileUpload(None, None)) :: Nil
+          mkFormComponent("regularFile", FileUpload(None, None, false)) :: Nil
       ) ::
         mkSection(
           mkFormComponent(
@@ -78,7 +78,7 @@ class GroupUtilsSpec extends AnyFlatSpecLike with Matchers with FormModelSupport
               5,
               List(
                 mkFormComponent("a", Text(ShortText.default, Value)),
-                mkFormComponent("f", FileUpload(None, None))
+                mkFormComponent("f", FileUpload(None, None, false))
               )
             )
           ) :: Nil

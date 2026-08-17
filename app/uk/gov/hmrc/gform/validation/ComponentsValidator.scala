@@ -220,7 +220,7 @@ class ComponentsValidator(
         case _: RevealingChoice =>
           validIf(new ChoiceChecker().runCheck(checkerDependency))
         case Group(_, _, _, _, _) => validationSuccess
-        case FileUpload(_, _) =>
+        case FileUpload(_, _, _) =>
           validIf(
             new FileUploadChecker().runCheck(checkerDependency)
           )

@@ -295,7 +295,7 @@ trait ExampleFieldValue { dependecies: ExampleFieldId =>
 
   def `fieldValue - facePhoto` = FormComponent(
     `fieldId - facePhoto`,
-    FileUpload(None, None),
+    FileUpload(None, None, false),
     toSmartString("Attach evidence of your smile"),
     false,
     None,
