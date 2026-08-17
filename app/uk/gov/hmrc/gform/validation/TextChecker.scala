@@ -400,7 +400,16 @@ object TextChecker {
       ),
       nonEmptyCheck = email(fieldValue, inputText)
     )
-    def emailVerifiedByCheck(c: EmailVerifiedBy): CheckProgram[Unit] = email(fieldValue, inputText)
+    def emailVerifiedByCheck(c: EmailVerifiedBy): CheckProgram[Unit] = conditionalMandatoryCheck(
+      mandatoryFailure = validationFailure(
+        fieldValue,
+        genericEmailErrorRequired,
+        fieldValue.errorShortName.map(_.transform(identity, " " + _).value().pure[List]) orElse (Some(
+          LocalisedString.constant("an", "").valueNoFallback.pure[List]
+        ))
+      ),
+      nonEmptyCheck = email(fieldValue, inputText)
+    )
 
     def utrCheck(): CheckProgram[Unit] = conditionalMandatoryCheck(
       mandatoryFailure = validationFailure(

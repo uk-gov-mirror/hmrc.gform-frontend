@@ -39,6 +39,8 @@ import uk.gov.hmrc.gform.models.ids.IndexedComponentId
 import uk.gov.hmrc.gform.models.ids.ModelComponentId
 import uk.gov.hmrc.gform.sharedmodel.LangADT
 import uk.gov.hmrc.gform.sharedmodel.SmartString
+import uk.gov.hmrc.gform.sharedmodel.EmailVerifierService
+import uk.gov.hmrc.gform.sharedmodel.email.EmailTemplateId
 import uk.gov.hmrc.gform.sharedmodel.form.EnvelopeId
 import uk.gov.hmrc.gform.sharedmodel.formtemplate._
 import uk.gov.hmrc.gform.sharedmodel.formtemplate.generators.FormatExprGen
@@ -729,5 +731,34 @@ class TextCheckerSpec
         )
       )
     )
+  }
+
+  it should "validate EmailVerifiedBy with distinct empty and pattern messages" in {
+    val constraint = EmailVerifiedBy(
+      FormComponentId("code"),
+      EmailVerifierService.digitalContact(EmailTemplateId("code_template"), None)
+    )
+    val fc = textComponent.copy(`type` = Text(constraint, Value))
+    val table = TableDrivenPropertyChecks.Table(
+      ("input", "expected"),
+      ("", Left(Map(fc.id.modelComponentId -> Set("Enter an email address")))),
+      (
+        "not-an-email",
+        Left(Map(fc.id.modelComponentId -> Set("Enter an email address in the correct format, like name@example.com")))
+      ),
+      ("user@example.com", ().asRight.asRight)
+    )
+
+    TableDrivenPropertyChecks.forAll(table) { (inputData, expected) =>
+      val formModelOptics = mkFormModelOptics(
+        mkFormTemplate(mkSection(fc.copy(`type` = Text(constraint, Value)))),
+        mkData(fc.id.value -> inputData)
+      )
+      val result = TextChecker.validateText(fc, constraint, formTemplate, envlopeId)(
+        formModelOptics.formModelVisibilityOptics,
+        new LookupRegistry(Map.empty)
+      )
+      result.foldMap(ShortCircuitInterpreter) shouldBe expected
+    }
   }
 }

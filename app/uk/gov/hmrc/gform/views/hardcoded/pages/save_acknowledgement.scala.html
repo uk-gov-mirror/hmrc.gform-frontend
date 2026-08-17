@@ -20,6 +20,8 @@
 @import uk.gov.hmrc.gform.views.hardcoded.SaveAcknowledgement
 @import uk.gov.hmrc.gform.sharedmodel.formtemplate.SectionNumber
 @import uk.gov.hmrc.gform.sharedmodel.formtemplate.SectionTitle4Ga
+@import uk.gov.hmrc.govukfrontend.views.viewmodels.backlink.BackLink
+@import uk.gov.hmrc.govukfrontend.views.viewmodels.content.Text
 
 @(
     saveAcknowledgement: SaveAcknowledgement,
@@ -30,12 +32,17 @@
     sectionTitle4Ga: Option[SectionTitle4Ga]
 )(implicit request: Request[_], messages: Messages, l: LangADT)
 
+@backLink = @{
+  new BackLink(href = call.url, content = new Text(messages("linkText.back")))
+}
+
 @uk.gov.hmrc.gform.views.html.main_template(
   title = saveAcknowledgement.heading,
   caption = None,
   formTemplate = saveAcknowledgement.formTemplate,
   frontendAppConfig = frontendAppConfig,
-  accessCode = maybeAccessCode
+  accessCode = maybeAccessCode,
+  backLink = Some(backLink)
 ) {
 
 @saveAcknowledgement.panelHtml

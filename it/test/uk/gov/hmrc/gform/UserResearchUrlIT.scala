@@ -39,13 +39,15 @@ class UserResearchUrlIT extends ITSpec with GFormStubs with EnvelopeStubs {
     val form = responseBody.getElementsByClass("hmrc-user-research-banner__container")
 
     form.text should include("Help make GOV.UK better")
-    form.text should include("You could be given a Love2Shop voucher as a thank you for feedback (opens in new tab)")
+    form.text should include("Help improve this service by taking part in research (opens in new tab)")
+    form.text should include("You could be given a Love2Shop voucher as a thank you for feedback.")
     form.text should include("Hide message Hide message.")
     form.text should include("I do not want to take part in research")
 
     val link = responseBody.getElementsByClass("hmrc-user-research-banner__link")
 
     link.attr("href") shouldBe "https://test.service.gov.uk"
+    link.text shouldBe "Help improve this service by taking part in research (opens in new tab)"
   }
 
   "requesting new form without 'userResearchUrl'" should "not display HMRC User Research Banner" in {
